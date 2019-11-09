@@ -39,9 +39,9 @@ func source_analyze(in_file string) {
 	//var_pattern := regexp.MustCompile(`(?m)^[^<]*\$(?P<var>\w+)\s*\=`)
 	var_pattern := regexp.MustCompile(`(?m)\$(?P<var>\w+)\s*(\[|\'|\w+|\'|\])*\s*\=`)
 	func_pattern := regexp.MustCompile(`(?m)(?P<func>\w+)\s*\(`)
-        comment_pattern := regexp.MustCompile(`(?m)\s*(?P<comment>^[<//])`)
+        // comment_pattern := regexp.MustCompile(`(?m)\s*(?P<comment>^[<//])`)
 
-	fmt.Printf("Running source analysis on %v \n", in_file)
+	fmt.Printf("File %v \n", in_file)
 
 	file, err := os.Open(in_file)
 	if err != nil {
@@ -74,11 +74,13 @@ func source_analyze(in_file string) {
                 
 		fmatch := func_pattern.FindAllStringSubmatch(content, -1)
 		vmatch := var_pattern.FindAllStringSubmatch(content, -1)
+                /*
 		cmatch := comment_pattern.FindAllStringSubmatch(content, -1)
 
                 if  len(cmatch) !=0 {
                     fmt.Println(cmatch)
                 }
+                */
 
 		for i := 0; i < len(vmatch); i++ {
 			if len(vmatch[i][1]) < 3 {
@@ -174,7 +176,7 @@ func source_analyze(in_file string) {
                 if v.vuln {
                     id_vuln = "vulnerable"
                 }
-		fmt.Printf("%v(%v):,%s %s %s\n", k, v.count,  id_type,
+		fmt.Printf("\t %v(%v):,%s %s %s\n", k, v.count,  id_type,
 			id_what, id_vuln)
 		if v.type_var {
 			var_count++
@@ -183,8 +185,10 @@ func source_analyze(in_file string) {
 			func_count++
 		}
 	}
+        if var_count+func_count > 0 {
 	fmt.Printf("variables %v function_identifiers %v Total %v  lines %v  size %v \n", var_count, func_count,
 		var_count+func_count, line_count, fi.Size())
+        }
 }
 
 /*
