@@ -3,7 +3,8 @@
 import math
 import pickle
 
-accepted_chars = 'abcdefghijklmnopqrstuvwxyz '
+accepted_chars = 'abcdefghijklmnopqrstuvwxyz 0123456789_'
+##accepted_chars = 'abcdefghijklmnopqrstuvwxyz '
 
 pos = dict([(char, idx) for idx, char in enumerate(accepted_chars)])
 
@@ -28,6 +29,7 @@ def train():
     # string has 0 probability.
     counts = [[10 for i in xrange(k)] for i in xrange(k)]
 
+
     # Count transitions from big text file, taken 
     # from http://norvig.com/spell-correct.html
     for line in open('big.txt'):
@@ -41,8 +43,8 @@ def train():
     # http://squarecog.wordpress.com/2009/01/10/dealing-with-underflow-in-joint-probability-calculations/
     for i, row in enumerate(counts):
         s = float(sum(row))
-        for j in xrange(len(row)):
-            row[j] = math.log(row[j] / s)
+        for j in xrange(len(row)): 
+           row[j] = math.log(row[j] / s)
 
     # Find the probability of generating a few arbitrarily choosen good and
     # bad phrases.
@@ -61,6 +63,9 @@ def avg_transition_prob(l, log_prob_mat):
     log_prob = 0.0
     transition_ct = 0
     for a, b in ngram(2, l):
+##       print("a=", a, "b=", b, "pos[a]=",pos[a], "pos[b]=", pos[b], 
+##             "log_prob_mat[pos[a]][pos[b]]=",log_prob_mat[pos[a]][pos[b]])
+        
         log_prob += log_prob_mat[pos[a]][pos[b]]
         transition_ct += 1
     # The exponentiation translates from log probs to probs.
