@@ -3,10 +3,14 @@
 import pickle
 import gib_detect_train
 import sys
+import os
 
 filepath = sys.argv[1]
 outfile  = filepath + ".out"
-model_data = pickle.load(open('gib_model.pki', 'rb'))
+bin_location = sys.argv[0]
+bin_dir = os.path.dirname(bin_location)
+model_file = bin_dir + "/gib_model.pki"
+model_data = pickle.load(open(model_file, 'rb'))
 
 with open(filepath) as fp:
    line = fp.readline()

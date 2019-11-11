@@ -8,6 +8,7 @@ import (
 	"strings"
 	"log"
 	"time"
+	"path"
 	"os"
 	"os/exec"
 	"regexp"
@@ -29,24 +30,29 @@ const (
 func main() {
 
 	fl := os.Args[1]
-	source_analyze(fl)
+        dr := path.Dir(os.Args[0])
+	source_analyze(dr,fl)
 
 }
 
-func source_analyze(in_file string) {
+func source_analyze(run_dir string, in_file string) {
 
 	ignore_kw_map := make(map[string]bool)
 	vuln_func_map := make(map[string]bool)
 
 	kw_list := []string{"foreach", "types", "__", "wp_die", "for", "include",
 		"die", "array", "unset", "isset", "if", "elseif", "defined", "define"}
+
 	vuln_func_list := []string{"mt_rand", "eval", "file_put_contents", "assert", "base64_decode", "gzinflate"}
-	//var_pattern := regexp.MustCompile(`(?m)^[^<]*\$(?P<var>\w+)\s*\=`)
+
+
 	var_pattern := regexp.MustCompile(`(?m)\$(?P<var>\w+)\s*(\[|\'|\w+|\'|\])*\s*\=`)
 	func_pattern := regexp.MustCompile(`(?m)(?P<func>\w+)\s*\(`)
         unicode_pattern := regexp.MustCompile(`(?m)\s*\@\w+\s*\"\D*\\(?P<unicode>\d{3})`)
         // comment_pattern := regexp.MustCompile(`(?m)\s*(?P<comment>^[<//])`)
 
+
+        fmt.Printf("Operating on %v\n", in_file)
 
 	file, err := os.Open(in_file)
 	if err != nil {
@@ -57,6 +63,7 @@ func source_analyze(in_file string) {
 
 	fi, err1 := file.Stat()
 	if err1 != nil {
+                fmt.Printf("could not open %v \n", in_file)
 		return
 	}
 
@@ -147,7 +154,7 @@ func source_analyze(in_file string) {
 	out_file, err := os.OpenFile(out_file_name, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println("cant create output file")
-		os.Exit(1)
+		os.Exit(-1)
 	}
 
 	out_file_hd := bufio.NewWriter(out_file)
@@ -157,13 +164,17 @@ func source_analyze(in_file string) {
 	out_file_hd.Flush()
         out_file.Close()
 
-        cmd := exec.Command("python", "gib_detect.py", out_file_name)
+
+        detector := run_dir + "/gib_detect.py"
+        fmt.Printf("about to run detector %v\n", detector)
+        cmd := exec.Command("python", detector, out_file_name)
 
 	var out bytes.Buffer
 
 	cmd.Stdout = &out
 	err = cmd.Run()
 	if err != nil {
+            fmt.Println(err)
             log.Fatal(err)
 	}
 
