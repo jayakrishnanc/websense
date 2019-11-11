@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"log"
+	"time"
 	"os"
 	"os/exec"
 	"regexp"
@@ -20,6 +21,10 @@ type identifier struct {
 	benign    bool
 	vuln      bool
 }
+
+const (
+    run_file_name="analyzer.out"
+)
 
 func main() {
 
@@ -39,9 +44,9 @@ func source_analyze(in_file string) {
 	//var_pattern := regexp.MustCompile(`(?m)^[^<]*\$(?P<var>\w+)\s*\=`)
 	var_pattern := regexp.MustCompile(`(?m)\$(?P<var>\w+)\s*(\[|\'|\w+|\'|\])*\s*\=`)
 	func_pattern := regexp.MustCompile(`(?m)(?P<func>\w+)\s*\(`)
+        unicode_pattern := regexp.MustCompile(`(?m)\s*\@\w+\s*\"\D*\\(?P<unicode>\d{3})`)
         // comment_pattern := regexp.MustCompile(`(?m)\s*(?P<comment>^[<//])`)
 
-	fmt.Printf("File %v \n", in_file)
 
 	file, err := os.Open(in_file)
 	if err != nil {
@@ -66,14 +71,29 @@ func source_analyze(in_file string) {
 	var_funcs := make(map[string]*identifier)
 	scanner := bufio.NewScanner(file)
 	line_count := 0
+	line_length := 0
+	long_lines := 0
+	max_line_length := 0
+	malicious_ids := 0
+        vuln_funcs := 0
+        unicode_includes := 0 
 
 	for scanner.Scan() {
 		content := scanner.Text()
+                line_length = len(content)
 		line_count++
+
+                if line_length > 80 {
+                    long_lines++ 
+                    if max_line_length < line_length {
+                        max_line_length = line_length
+                    }
+                }
 
                 
 		fmatch := func_pattern.FindAllStringSubmatch(content, -1)
 		vmatch := var_pattern.FindAllStringSubmatch(content, -1)
+                umatch := unicode_pattern.FindAllStringSubmatch(content, -1)
                 /*
 		cmatch := comment_pattern.FindAllStringSubmatch(content, -1)
 
@@ -120,6 +140,7 @@ func source_analyze(in_file string) {
 				idp.count++
 			}
 		}
+                unicode_includes += len(umatch)
 	}
 
         out_file_name := in_file + ".parsed"
@@ -160,34 +181,48 @@ func source_analyze(in_file string) {
                 }
 	}
 
+        run_file, err := os.OpenFile(run_file_name , os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+        if err != nil {
+            fmt.Println("Unable to write output")
+            return
+        }
+        defer run_file.Close()
+        
 	var var_count, func_count int
+        fmt.Fprintf(run_file,"filename \t %v Time %v \n", in_file, time.Now())
+
 	for k, v := range var_funcs {
                 var id_type, id_what, id_vuln string
                 if v.type_func {
+                    func_count++
                     id_type = "func"
                 } else {
                     id_type = "var"
+                    var_count++
                 }
                 if !v.benign {
                     id_what = "malicious"
+                    malicious_ids += v.count
                 } else {
                     id_what = "benign"
                 }
                 if v.vuln {
                     id_vuln = "vulnerable"
+                    vuln_funcs++
+		    fmt.Printf("\t %v(%v): %s %s %s\n", k, v.count,  id_vuln)
                 }
-		fmt.Printf("\t %v(%v):,%s %s %s\n", k, v.count,  id_type,
-			id_what, id_vuln)
-		if v.type_var {
-			var_count++
-		}
-		if v.type_func {
-			func_count++
-		}
+                fmt.Fprintf(run_file,"\t %v(%v):\t%5.5s %10.10s %s \n", k, v.count,  id_type, id_what, id_vuln)
 	}
         if var_count+func_count > 0 {
-	fmt.Printf("variables %v function_identifiers %v Total %v  lines %v  size %v \n", var_count, func_count,
-		var_count+func_count, line_count, fi.Size())
+            fmt.Printf("vars = %v functions = %v lines = %v long_lines = %v \nmax_line_size = %v size = %v unicode_includes = %v malicious_ids = %v \n", 
+                var_count, 
+                func_count,
+		line_count,
+                long_lines,
+                max_line_length,
+                fi.Size(),
+                unicode_includes,
+                malicious_ids)
         }
 }
 

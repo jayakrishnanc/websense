@@ -1,3 +1,6 @@
+
+#!/bin/bash
+
 # Colourise the output
 RED='\033[0;31m'        # Red
 GRE='\033[0;32m'        # Green
@@ -5,7 +8,6 @@ YEL='\033[1;33m'        # Yellow
 NCL='\033[0m'           # No Color
 
 echo "" > analyzer.out
-
 
 file_specification() {
         FILE_NAME="$(basename "${entry}")"
@@ -17,7 +19,7 @@ file_specification() {
 
         printf "%*s${GRE}%s${NCL}\n"                    $((indent+4)) '' "${entry}"
         printf "%*s\tFile name:\t${YEL}%s${NCL}\n"      $((indent+4)) '' "$FILE_NAME"
-        #printf "%*s\tDirectory:\t${YEL}%s${NCL}\n"      $((indent+4)) '' "$DIR"
+        printf "%*s\tDirectory:\t${YEL}%s${NCL}\n"      $((indent+4)) '' "$DIR"
         printf "%*s\tName only:\t${YEL}%s${NCL}\n"      $((indent+4)) '' "$NAME"
         printf "%*s\tExtension:\t${YEL}%s${NCL}\n"      $((indent+4)) '' "$EXT"
         printf "%*s\tFile size:\t${YEL}%s${NCL}\n"      $((indent+4)) '' "$SIZE"
@@ -29,11 +31,10 @@ walk() {
         printf "\n%*s${RED}%s${NCL}\n\n" "$indent" '' "$1"
         # If the entry is a file do some operations
         for entry in "$1"/*; do [[ -f "$entry" ]] && file_specification; done
+        # If the entry is a directory call walk() == create recursion
+        for entry in "$1"/*; do [[ -d "$entry" ]] && walk "$entry" $((indent+4)); done
 }
 
-
 # If the path is empty use the current, otherwise convert relative to absolute; Exec walk()
-#o[[ -z "${1}" ]] && ABS_PATH="${PWD}" || cd "${1}" && ABS_PATH="${PWD}"
-walk "${1}"
-rm $1/*.parsed
-rm $1/*.parsed.out
+[[ -z "${1}" ]] && ABS_PATH="${PWD}" || cd "${1}" && ABS_PATH="${PWD}"
+walk "${ABS_PATH}"
