@@ -2,8 +2,8 @@ package idfile
 
 import (
 	"fmt"
-	"log"
 	"os"
+        "encoding/json"
 )
 
 const (
@@ -51,7 +51,7 @@ var fileSignatures = []fileSig{
 	{16, "GIF89a", "", 0, 0, GIF},
 	{32, "\xff\xd8", "", 0, 0, JPEG},
 	{32, "\xca\xfe\xba\xbe", "", 0, 0, JAVA_CLASS},
-	{32, "dex\n", "", 0, 0, ANDROID_EXE"},
+	{32, "dex\n", "", 0, 0, ANDROID_EXE},
 	{500, "", "ustar", 257, 5, TAR},
 	{32, "PK\x03\x04", "", 0, 0, ZIP},
 	{32, "BZh", "", 0, 0, BZIP},
@@ -103,6 +103,7 @@ func FindFileType(fileName string) fileSig {
 	var contentByte = make([]byte, MAX_BYTES_TO_READ)
 	numByte, _ := file.Read(contentByte)
 	contentByte = contentByte[:numByte]
+        fs_ret := fileSig{}
 
 	for _, fs := range fileSignatures {
                 //fmt.Println(fs)
@@ -111,8 +112,9 @@ func FindFileType(fileName string) fileSig {
 			contentMatch(contentByte, fs.content, fs.contentStart, fs.contentSize) {
 			return fs
 		}
+                fs_ret = fs
 	}
-	return nil
+	return fs_ret
 }
 
 type TypeViolation struct {
@@ -127,7 +129,7 @@ type LocationViolation struct {
     ViolationFound bool `json:"violations,omitempty"`
     FileInWrongLocation bool `json:"wrong_location,omitempty"`
     FileHidden  bool    `json:"hidden,omitempty"`
-    Detail string       json:"detail"`
+    Detail string       `json:"detail"`
 }
 
 type AttribViolation struct {
@@ -177,22 +179,21 @@ func AnalyzeFile(fileName string) string {
         case GENERIC:
     }
 
-    if fs == nil {
-        return json.Marshal("")
-    }
+    //fileAnalysis := fs.flHdr(fs.fileType)
 
-    fileAnalysis := fs.flHdr(fs.fileType)
-
-    fileAnalysisJSON, err := json.Marshal(fileAnalysis)
+    fileAnalysisJSON, err := json.Marshal(fs)
 
     if  err != nil {
-        log.Errorf("Error on Marshaling fileAnalysis for %v \n", fileName)
+        fmt.Printf("Error on Marshaling fileAnalysis for %v \n", fileName)
     }
+
+    fmt.Println(string(fileAnalysisJSON))
 
     return string(fileAnalysisJSON)
 
 }
 
+/*
 type SourceViolation struct {
     NewLinesPercentage  int
     CrypticCodePresent  bool
@@ -220,8 +221,5 @@ func sourceFileAnalyzer(fs, fileName string) (bool, string)  {
                     "newline violation lines [%v] vs size [%v] \n", 
                     lines, size)
         }
-
-
-
-
 }
+*/

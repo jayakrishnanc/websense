@@ -1,4 +1,4 @@
-package main
+package codeanalyzer
 
 import (
 	"bufio"
@@ -6,9 +6,8 @@ import (
 	"bytes"
 	"strconv"
 	"strings"
-	"log"
 	"time"
-	"path"
+//	"path"
 	"os"
 	"os/exec"
 	"regexp"
@@ -23,19 +22,34 @@ type identifier struct {
 	vuln      bool
 }
 
+type Source_analysis_detail struct {
+    variables   int
+    functions   int
+    lines       int
+    long_lines  int
+    max_line_length int
+    file_size   int64
+    unicode_includes    int
+    malicious_ids   int
+    vuln_funcs  int
+}
+
 const (
     run_file_name="analyzer.out"
 )
 
+/*
 func main() {
 
 	fl := os.Args[1]
         dr := path.Dir(os.Args[0])
-	source_analyze(dr,fl)
+        sad := Source_analyze(dr,fl)
+        fmt.Println(sad)
 
 }
+*/
 
-func source_analyze(run_dir string, in_file string) {
+func Source_analyze(run_dir string, in_file string) (* Source_analysis_detail) {
 
 	ignore_kw_map := make(map[string]bool)
 	vuln_func_map := make(map[string]bool)
@@ -57,15 +71,17 @@ func source_analyze(run_dir string, in_file string) {
 	file, err := os.Open(in_file)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil
 	}
 	defer file.Close()
 
 	fi, err1 := file.Stat()
 	if err1 != nil {
                 fmt.Printf("could not open %v \n", in_file)
-		return
+                return nil
 	}
+
+        file_size := fi.Size()
 
 	for _, kw := range kw_list {
 		ignore_kw_map[kw] = true
@@ -154,7 +170,7 @@ func source_analyze(run_dir string, in_file string) {
 	out_file, err := os.OpenFile(out_file_name, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println("cant create output file")
-		os.Exit(-1)
+                return nil
 	}
 
 	out_file_hd := bufio.NewWriter(out_file)
@@ -175,7 +191,7 @@ func source_analyze(run_dir string, in_file string) {
 	err = cmd.Run()
 	if err != nil {
             fmt.Println(err)
-            log.Fatal(err)
+            return nil
 	}
 
         for {
@@ -195,7 +211,7 @@ func source_analyze(run_dir string, in_file string) {
         run_file, err := os.OpenFile(run_file_name , os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
         if err != nil {
             fmt.Println("Unable to write output")
-            return
+            return nil
         }
         defer run_file.Close()
         
@@ -225,16 +241,29 @@ func source_analyze(run_dir string, in_file string) {
                 fmt.Fprintf(run_file,"\t %v(%v):\t%5.5s %10.10s %s \n", k, v.count,  id_type, id_what, id_vuln)
 	}
         if var_count+func_count > 0 {
-            fmt.Printf("vars = %v functions = %v lines = %v long_lines = %v \nmax_line_size = %v size = %v unicode_includes = %v malicious_ids = %v \n", 
+            fmt.Printf("vars = %v functions = %v lines = %v long_lines = %v \nmax_line_size = %v size = %v unicode_includes = %v malicious_ids = %v vulnerable_funcs %v\n", 
                 var_count, 
                 func_count,
 		line_count,
                 long_lines,
                 max_line_length,
-                fi.Size(),
+                file_size,
                 unicode_includes,
-                malicious_ids)
+                malicious_ids,
+                vuln_funcs)
         }
+        sad := Source_analysis_detail {
+            variables: var_count,
+            functions: func_count,
+            lines    : line_count,
+            long_lines: long_lines,
+            max_line_length: max_line_length,
+            file_size   : file_size,
+            unicode_includes    : unicode_includes,
+            malicious_ids   : malicious_ids,
+            vuln_funcs  : vuln_funcs,
+        }
+        return &sad
 }
 
 /*
